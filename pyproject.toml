@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "good-waves-please"
+version = "0.1.0"
+description = "Tell me how your surfs were and find out how your surfs might be"
+authors = ["Tristan New <tristannew@ymail.com>"]
+readme = "README.md"
+packages = [{include = "good_waves_please"}]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+pandas = "^2.2.1"
+streamlit = "*"
+scrapy = "^2.11.1"
+sqlalchemy = "^2.0.28"
+psycopg2-binary = "^2.9.9"
+
+[tool.poetry.group.dev.dependencies]
+ipykernel = "*"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
