@@ -10,6 +10,11 @@ import pandas as pd
 import logging
 import numpy as np
 
+st.set_page_config(
+    page_title="How was your surf?",
+    page_icon="🌊",
+)
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
