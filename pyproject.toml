@@ -9,7 +9,7 @@ packages = [{include = "good_waves_please"}]
 [tool.poetry.dependencies]
 python = "^3.9.19"
 pandas = "^2.2.1"
-streamlit = "*"
+streamlit = "1.32.2"
 scrapy = "^2.11.1"
 sqlalchemy = "^2.0.28"
 psycopg2-binary = "^2.9.9"
