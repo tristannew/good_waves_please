@@ -7,7 +7,7 @@ readme = "README.md"
 packages = [{include = "good_waves_please"}]
 
 [tool.poetry.dependencies]
-python = "^3.12"
+python = "^3.9.19"
 pandas = "^2.2.1"
 streamlit = "*"
 scrapy = "^2.11.1"
