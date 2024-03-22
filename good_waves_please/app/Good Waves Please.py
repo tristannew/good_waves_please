@@ -15,7 +15,7 @@ st.markdown(
 
 data_input = st.button("Go to rate a surf.")
 if data_input:
-    st.switch_page("pages/2_🌊_How was your surf?.py")
+    st.switch_page("pages/1_🌊_How was your surf?.py")
 
 # wave_pred = st.button("Go to find out where to surf.")
 # if wave_pred:
