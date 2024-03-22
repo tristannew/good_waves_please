@@ -1,12 +1,17 @@
 import pysurfline
 import datetime
-from good_waves_please.api.paths import DATA_DIR, ARCHIVED_DATA
+from good_waves_please.api.paths import (
+    DATA_DIR,
+    ARCHIVED_DATA,
+    GCS_SURF_SESSIONS_BUCKET,
+)
 import pandas as pd
 import logging
 import shutil
 import datetime
 from sqlalchemy import create_engine
 import streamlit as st
+from st_files_connection import FilesConnection
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -120,13 +125,32 @@ def write_data(row: pd.DataFrame):
     shutil.copy(DATA_DIR / "database.csv", ARCHIVED_DATA / f"database_{date_id}.csv")
     update = row.copy()
     update.reset_index(drop=True, inplace=True)
-    update.to_csv(DATA_DIR / "database.csv", mode="a", index_label="index", header=False)
+    update.to_csv(DATA_DIR / "database.csv", mode="a", index=False, header=False)
     logger.info("Appended new row to database!")
     return None
 
+
+def write_data_gcs(row: pd.DataFrame):
+
+    conn = st.connection("gcs", type=FilesConnection)
+    update = row.copy()
+    update.reset_index(drop=True, inplace=True)
+    update.to_csv(
+        GCS_SURF_SESSIONS_BUCKET + "database.csv",
+        mode="a",
+        index=False,
+        header=False,
+        # storage_options=conn,
+    )
+    logger.info("Appended new row to database!")
+    return None
+
+
 def write_data_psql(row: pd.DataFrame):
     date_id = datetime.datetime.now().strftime(format="%Y%m%d%H%M%S")
-    engine = create_engine(f'postgresql://{st.secrets.connections.postgresql.username}:{st.secrets.connections.postgresql.password}@{st.secrets.connections.postgresql.host}:{st.secrets.connections.postgresql.port}/{st.secrets.connections.postgresql.database}')
+    engine = create_engine(
+        f"postgresql://{st.secrets.connections.postgresql.username}:{st.secrets.connections.postgresql.password}@{st.secrets.connections.postgresql.host}:{st.secrets.connections.postgresql.port}/{st.secrets.connections.postgresql.database}"
+    )
     # sql_query = "SELECT * FROM your_table;"
     for_archive = pd.read_sql_table("surf_sessions", con=engine)
     for_archive.to_csv(ARCHIVED_DATA / f"sql_database_{date_id}.csv")

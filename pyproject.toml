@@ -13,6 +13,10 @@ streamlit = "*"
 scrapy = "^2.11.1"
 sqlalchemy = "^2.0.28"
 psycopg2-binary = "^2.9.9"
+google-cloud-storage = "^2.16.0"
+fsspec = "^2024.3.1"
+gcsfs = "^2024.3.1"
+st-files-connection = "^0.1.0"
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "*"

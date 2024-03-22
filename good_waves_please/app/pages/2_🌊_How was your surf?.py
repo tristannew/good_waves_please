@@ -2,8 +2,8 @@ import streamlit as st
 from good_waves_please.api.gather_surf_data import (
     merge_session_and_rating_data,
     gather_session_data,
-    write_data,
-    write_data_psql,
+    write_data_gcs,
+    # write_data_psql,
 )
 from good_waves_please.api.spot_ids import SPOT_IDS_MAP_DF
 import pandas as pd
@@ -62,7 +62,7 @@ wave_size = st.selectbox(
     "Roughly, what was the biggest wave that came through (in feet)",
     # NOTE: options are a tuple starting with 999. If nothing is selected
     # An impossible value is returned, but as an integer for data storage's sake
-    options=tuple(np.arange(1,100)),
+    options=tuple(np.arange(1, 100)),
     format_func=lambda option: f"{option} ft",
     index=None,
 )
@@ -130,10 +130,8 @@ if submit:
         wind=wind_conditions,
         crowd=crowd,
     )
-    # NOTE: all working with secrets now, just that the secrets aren't correct, need to put in correct
-    # authentication detaisl so connection succeeds
-    write_data_psql(session_data_rated)
-    write_data(session_data_rated)
+
+    write_data_gcs(session_data_rated)
 
     # Celebrate the upload
     st.success("🎉 You have successfully uploaded a session, thank you! 🎉")
