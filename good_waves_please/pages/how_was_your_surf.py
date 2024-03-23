@@ -142,3 +142,6 @@ if submit:
     st.success("🎉 You have successfully uploaded a session, thank you! 🎉")
     st.balloons()
     # NOTE: show the data/conditions here (don't need to show their rating)
+
+    st.markdown(":rainbow[**Session Details:**]")
+    st.write(session_data)
