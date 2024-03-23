@@ -135,13 +135,13 @@ def write_data_gcs(row: pd.DataFrame):
     conn = st.connection("gcs", type=FilesConnection)
     update = row.copy()
     update.reset_index(drop=True, inplace=True)
-    update.to_csv(
-        GCS_SURF_SESSIONS_BUCKET + "database.csv",
+    with conn.open(GCS_SURF_SESSIONS_BUCKET + "database.csv", "w") as file:
+        update.to_csv(
+        file,
         mode="a",
         index=False,
         header=False,
-        storage_options=conn,
-    )
+        )
     logger.info("Appended new row to database!")
     return None
 
