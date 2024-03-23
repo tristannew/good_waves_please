@@ -140,7 +140,7 @@ def write_data_gcs(row: pd.DataFrame):
         mode="a",
         index=False,
         header=False,
-        # storage_options=conn,
+        storage_options=conn,
     )
     logger.info("Appended new row to database!")
     return None
