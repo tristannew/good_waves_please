@@ -1,11 +1,11 @@
 import streamlit as st
-from good_waves_please.app.api.gather_surf_data import (
+from good_waves_please.api.gather_surf_data import (
     merge_session_and_rating_data,
     gather_session_data,
     write_data_gcs,
     # write_data_psql,
 )
-from good_waves_please.app.api.spot_ids import SPOT_IDS_MAP_DF
+from good_waves_please.api.spot_ids import SPOT_IDS_MAP_DF
 import pandas as pd
 import logging
 import numpy as np

@@ -1,6 +1,6 @@
 import pysurfline
 import datetime
-from good_waves_please.app.api.paths import (
+from good_waves_please.api.paths import (
     DATA_DIR,
     ARCHIVED_DATA,
     GCS_SURF_SESSIONS_BUCKET,
