@@ -1,4 +1,9 @@
 import streamlit as st
+st.set_page_config(
+    page_title="How was your surf?",
+    page_icon="🌊",
+)
+
 from good_waves_please.api.gather_surf_data import (
     merge_session_and_rating_data,
     gather_session_data,
@@ -9,11 +14,6 @@ from good_waves_please.api.spot_ids import SPOT_IDS_MAP_DF
 import pandas as pd
 import logging
 import numpy as np
-
-st.set_page_config(
-    page_title="How was your surf?",
-    page_icon="🌊",
-)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
