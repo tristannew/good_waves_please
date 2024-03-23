@@ -18,6 +18,9 @@ fsspec = "^2024.3.1"
 gcsfs = "^2024.3.1"
 st-files-connection = "^0.1.0"
 
+[tool.poetry.dependencies.good_waves_please]
+path = "./"
+
 [tool.poetry.group.dev.dependencies]
 ipykernel = "*"
 
