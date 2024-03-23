@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Tell me how your surfs were and find out how your surfs might be"
 authors = ["Tristan New <tristannew@ymail.com>"]
 readme = "README.md"
+packages = [{include = "good_waves_please"}]
 
 [tool.poetry.dependencies]
 python = "^3.9.19"
@@ -16,9 +17,6 @@ google-cloud-storage = "^2.16.0"
 fsspec = "^2024.3.1"
 gcsfs = "^2024.3.1"
 st-files-connection = "^0.1.0"
-
-[tool.poetry.dependencies.good_waves_please]
-path = "./"
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "*"
