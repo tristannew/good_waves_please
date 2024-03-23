@@ -1,5 +1,10 @@
 import streamlit as st
 
+st.set_page_config(
+    page_title="Good Waves Please",
+    page_icon="👋",
+)
+
 st.title("🏄 :rainbow[Good Waves Please] 🏄")
 
 st.markdown(
