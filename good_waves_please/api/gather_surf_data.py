@@ -135,7 +135,7 @@ def write_data_gcs(row: pd.DataFrame):
     conn = st.connection("gcs", type=FilesConnection)
     update = row.copy()
     update.reset_index(drop=True, inplace=True)
-    with conn.open(GCS_SURF_SESSIONS_BUCKET + "database.csv", "w") as file:
+    with conn.open(GCS_SURF_SESSIONS_BUCKET + "database.csv", "a") as file:
         update.to_csv(
         file,
         mode="a",
