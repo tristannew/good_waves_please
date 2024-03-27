@@ -135,12 +135,14 @@ def write_data_gcs(row: pd.DataFrame):
     conn = st.connection("gcs", type=FilesConnection)
     update = row.copy()
     update.reset_index(drop=True, inplace=True)
-    current_data = conn.read(GCS_SURF_SESSIONS_BUCKET + "database.csv", input_format='csv')
+    current_data = conn.read(
+        GCS_SURF_SESSIONS_BUCKET + "database.csv", input_format="csv"
+    )
     updated_data = pd.concat([current_data, update], ignore_index=True)
     with conn.open(GCS_SURF_SESSIONS_BUCKET + "database.csv", "w") as file:
         updated_data.to_csv(
-        file,
-        index=False,
+            file,
+            index=False,
         )
     # TODO: it would be more efficient to append the data.
     # with conn.open(GCS_SURF_SESSIONS_BUCKET + "database.csv", "a") as file:
