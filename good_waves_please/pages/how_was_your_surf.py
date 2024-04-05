@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 st.title(":blue[How was your surf? Tell us here!]")
 
 surf_spots = tuple(SPOT_IDS_MAP_DF["spot_name"].values)
-format_func = lambda option: f"{option} - {SPOT_IDS_MAP_DF[SPOT_IDS_MAP_DF["spot_name"] == option]["region"].values[0]}"
+format_func = lambda option: f"{option} - {SPOT_IDS_MAP_DF[SPOT_IDS_MAP_DF['spot_name'] == option]['region'].values[0]}"
 surfed_here = st.selectbox("Where did you surf?", 
                            options=surf_spots,
                            index=None,
