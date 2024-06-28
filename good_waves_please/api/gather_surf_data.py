@@ -1,5 +1,6 @@
 import pysurfline
 import datetime
+import numpy as np
 from good_waves_please.api.paths import (
     DATA_DIR,
     ARCHIVED_DATA,
@@ -8,7 +9,6 @@ from good_waves_please.api.paths import (
 import pandas as pd
 import logging
 import shutil
-import datetime
 from sqlalchemy import create_engine
 import streamlit as st
 from st_files_connection import FilesConnection
@@ -21,42 +21,47 @@ def add_tide_data(
     forecast_data: pd.DataFrame, forecast_obj: pysurfline.core.SpotForecasts
 ):
     forecast_df = forecast_data.copy()
+    tides = forecast_obj.tides
 
-    tide_df = pd.DataFrame(
-        [
-            [item.timestamp.dt, item.utcOffset, item.type, item.height]
-            for item in forecast_obj.tides
-        ],
-        columns=["timestamp_dt", "utcOffset", "tide_type", "tide_height"],
-    )
-    high_low_indices = tide_df[tide_df["tide_type"].isin(["HIGH", "LOW"])].index
+    if len(tides) == 0:
+        now = datetime.datetime.now()
+        now = now.replace(minute=0, second=0) if now.minute <= 29 else now.replace(minute=0, second=0) + datetime.timedelta(hours=1)
+        hourly_datetimes = [now + datetime.timedelta(hours=i) for i in range(24)]
+        length = len(hourly_datetimes)
+        data_dict = {"timestamp_dt":hourly_datetimes, "utcOffset":[np.nan]*length, "tide_type":[np.nan]*length, "tide_height":[np.nan]*length}
+        updated_df = pd.DataFrame(data_dict)
+        
+    else:
 
-    for index in high_low_indices:
-        if (tide_df.loc[index, "timestamp_dt"].second == 0) and (
-            tide_df.loc[index, "timestamp_dt"].minute == 0
-        ):
-            print("Do nothing")
-        else:
-            if index == 0:
-                nearest_in_time = tide_df.loc[index + 1, :]
+        tide_df = pd.DataFrame(
+            [
+                [item.timestamp.dt, item.utcOffset, item.type, item.height]
+                for item in tides
+            ],
+            columns=["timestamp_dt", "utcOffset", "tide_type", "tide_height"],
+        )
+        # The tide_df has a row for each hour and then an additional row for 
+        # each high/low tide when they don't happen on the hour, minute and second (which is very rare)
+        # This logic just reduces this df so that there is a row for each hour and high/low
+        # tides are at the nearest hour. I should probably put it in a separate function.
+        updated_rows = []
+        updated_hours = []
+
+        for _, row in tide_df.sort_values(by="tide_type").iterrows():
+            if row.timestamp_dt.hour in updated_hours:
+                continue
+            elif row.tide_type in ["HIGH", "LOW"]:
+                row.timestamp_dt = row.timestamp_dt.replace(minute=0, second=0) if row.timestamp_dt.minute <= 29 else row.timestamp_dt.replace(minute=0, second=0) + datetime.timedelta(hours=1)
+                updated_rows.append(row)
+                updated_hours.append(row.timestamp_dt.hour)
             else:
-                before_diff = abs(
-                    tide_df.loc[index - 1, "timestamp_dt"]
-                    - tide_df.loc[index, "timestamp_dt"]
-                )
-                after_diff = abs(
-                    tide_df.loc[index + 1, "timestamp_dt"]
-                    - tide_df.loc[index, "timestamp_dt"]
-                )
-                nearest_in_time = (
-                    tide_df.loc[index - 1, :]
-                    if before_diff < after_diff
-                    else tide_df.loc[index + 1, :]
-                )
-            tide_df.loc[index, "timestamp_dt"] = nearest_in_time.copy()["timestamp_dt"]
-            tide_df.drop(nearest_in_time.name, inplace=True)
+                updated_rows.append(row)
+                updated_hours.append(row.timestamp_dt.hour)
 
-    forecast_df = forecast_df.merge(tide_df, on="timestamp_dt")
+        updated_df = pd.DataFrame(updated_rows).sort_index().reset_index(drop=True)
+
+        print(f"forecast cols: {forecast_df.columns}\nupdate cols: {updated_df.columns}")
+    forecast_df = forecast_df.merge(updated_df, on="timestamp_dt")
     return forecast_df
 
 
@@ -78,6 +83,19 @@ def middle_time(time1, time2):
     return middle_time
 
 
+def get_forecast_at_spot(
+    spot_id: str,
+):
+    """
+    Using the surf spot id, you can use the API to get info on the
+    surf and return it as a pandas row.
+    """
+    forecast = pysurfline.get_spot_forecasts(spot_id, intervalHours=1, days=1)
+    forecast_df = forecast.get_dataframe()
+    forecast_df = add_tide_data(forecast_data=forecast_df, forecast_obj=forecast)
+    forecast_df["spot_id"] = spot_id
+    return forecast_df
+
 def gather_session_data(
     spot_id: str,
     got_in_time,
@@ -90,9 +108,7 @@ def gather_session_data(
     it means the surf was not today, so find the details for the date.
     """
     time_of_surf = middle_time(got_in_time, got_out_time)
-    forecast = pysurfline.get_spot_forecasts(spot_id, intervalHours=1, days=1)
-    forecast_df = forecast.get_dataframe()
-    forecast_df = add_tide_data(forecast_data=forecast_df, forecast_obj=forecast)
+    forecast_df = get_forecast_at_spot(spot_id=spot_id)
     forecast_row = forecast_df[forecast_df["timestamp_dt"].dt.hour == time_of_surf.hour]
     return forecast_row
 
