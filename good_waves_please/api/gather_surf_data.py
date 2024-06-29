@@ -23,17 +23,17 @@ def add_tide_data(
     forecast_df = forecast_data.copy()
     tides = forecast_obj.tides
 
-    if len(tides) == 0:
-        now = datetime.datetime.now()
-        now = now.replace(minute=0, second=0) if now.minute <= 29 else now.replace(minute=0, second=0) + datetime.timedelta(hours=1)
-        hourly_datetimes = [now + datetime.timedelta(hours=i) for i in range(24)]
-        length = len(hourly_datetimes)
-        data_dict = {"timestamp_dt":hourly_datetimes, "utcOffset":[np.nan]*length, "tide_type":[np.nan]*length, "tide_height":[np.nan]*length}
-        updated_df = pd.DataFrame(data_dict)
-        
-    else:
+    tide_df = pd.DataFrame(
+        [
+            [item.timestamp.dt, item.utcOffset, item.type, item.height]
+            for item in forecast_obj.tides
+        ],
+        columns=["timestamp_dt", "utcOffset", "tide_type", "tide_height"],
+    )
+    high_low_indices = tide_df[tide_df["tide_type"].isin(
+        ["HIGH", "LOW"])].index
 
-        tide_df = pd.DataFrame(
+    tide_df = pd.DataFrame(
             [
                 [item.timestamp.dt, item.utcOffset, item.type, item.height]
                 for item in tides
@@ -47,7 +47,7 @@ def add_tide_data(
         updated_rows = []
         updated_hours = []
 
-        for _, row in tide_df.sort_values(by="tide_type").iterrows():
+        for index, row in tide_df.sort_values(by="tide_type").iterrows():
             if row.timestamp_dt.hour in updated_hours:
                 continue
             elif row.tide_type in ["HIGH", "LOW"]:
@@ -55,8 +55,22 @@ def add_tide_data(
                 updated_rows.append(row)
                 updated_hours.append(row.timestamp_dt.hour)
             else:
-                updated_rows.append(row)
-                updated_hours.append(row.timestamp_dt.hour)
+                before_diff = abs(
+                    tide_df.loc[index - 1, "timestamp_dt"]
+                    - tide_df.loc[index, "timestamp_dt"]
+                )
+                after_diff = abs(
+                    tide_df.loc[index + 1, "timestamp_dt"]
+                    - tide_df.loc[index, "timestamp_dt"]
+                )
+                nearest_in_time = (
+                    tide_df.loc[index - 1, :]
+                    if before_diff < after_diff
+                    else tide_df.loc[index + 1, :]
+                )
+            tide_df.loc[index, "timestamp_dt"] = nearest_in_time.copy()[
+                "timestamp_dt"]
+            tide_df.drop(nearest_in_time.name, inplace=True)
 
         updated_df = pd.DataFrame(updated_rows).sort_index().reset_index(drop=True)
 
@@ -100,16 +114,25 @@ def gather_session_data(
     spot_id: str,
     got_in_time,
     got_out_time,
-    # date: None
+    date: None
 ):
     """
     Using the surf spot id and time, you can use the API to get info on the
     surf and return it as a pandas row. If there is a date
     it means the surf was not today, so find the details for the date.
     """
-    time_of_surf = middle_time(got_in_time, got_out_time)
-    forecast_df = get_forecast_at_spot(spot_id=spot_id)
-    forecast_row = forecast_df[forecast_df["timestamp_dt"].dt.hour == time_of_surf.hour]
+    if date == datetime.now().date():
+        time_of_surf = middle_time(got_in_time, got_out_time)
+        forecast = pysurfline.get_spot_forecasts(
+            spot_id, intervalHours=1, days=1)
+        forecast_df = forecast.get_dataframe()
+        forecast_df = add_tide_data(
+            forecast_data=forecast_df, forecast_obj=forecast)
+        forecast_row = forecast_df[forecast_df["timestamp_dt"].dt.hour ==
+                                   time_of_surf.hour]
+    else:
+        # get it from the hindcast dataset
+
     return forecast_row
 
 
@@ -138,10 +161,12 @@ def merge_session_and_rating_data(
 
 def write_data(row: pd.DataFrame):
     date_id = datetime.datetime.now().strftime(format="%Y%m%d%H%M%S")
-    shutil.copy(DATA_DIR / "database.csv", ARCHIVED_DATA / f"database_{date_id}.csv")
+    shutil.copy(DATA_DIR / "database.csv",
+                ARCHIVED_DATA / f"database_{date_id}.csv")
     update = row.copy()
     update.reset_index(drop=True, inplace=True)
-    update.to_csv(DATA_DIR / "database.csv", mode="a", index=False, header=False)
+    update.to_csv(DATA_DIR / "database.csv",
+                  mode="a", index=False, header=False)
     logger.info("Appended new row to database!")
     return None
 
@@ -175,21 +200,24 @@ def write_data_gcs(row: pd.DataFrame):
 def write_data_psql(row: pd.DataFrame):
     date_id = datetime.datetime.now().strftime(format="%Y%m%d%H%M%S")
     engine = create_engine(
-        f"postgresql://{st.secrets.connections.postgresql.username}:{st.secrets.connections.postgresql.password}@{st.secrets.connections.postgresql.host}:{st.secrets.connections.postgresql.port}/{st.secrets.connections.postgresql.database}"
+        f"postgresql://{st.secrets.connections.postgresql.username}:{st.secrets.connections.postgresql.password}@{
+            st.secrets.connections.postgresql.host}:{st.secrets.connections.postgresql.port}/{st.secrets.connections.postgresql.database}"
     )
     # sql_query = "SELECT * FROM your_table;"
     for_archive = pd.read_sql_table("surf_sessions", con=engine)
     for_archive.to_csv(ARCHIVED_DATA / f"sql_database_{date_id}.csv")
     update = row.copy()
     update.reset_index(drop=True, inplace=True)
-    update.to_sql("surf_sessions", con=engine, if_exists="append", index_label="index")
+    update.to_sql("surf_sessions", con=engine,
+                  if_exists="append", index_label="index")
     logger.info("Appended new row to database!")
     return None
 
 
 def write_data_from_empty(row: pd.DataFrame):
     date_id = datetime.datetime.now().strftime(format="%Y%m%d%H%M%S")
-    shutil.copy(DATA_DIR / "database.csv", ARCHIVED_DATA / f"database_{date_id}.csv")
+    shutil.copy(DATA_DIR / "database.csv",
+                ARCHIVED_DATA / f"database_{date_id}.csv")
     try:
         database = pd.read_csv(DATA_DIR / "database.csv")
         update = pd.concat([database, row])

@@ -1,4 +1,5 @@
 import streamlit as st
+
 st.set_page_config(
     page_title="How was your surf?",
     page_icon="🌊",
@@ -21,18 +22,18 @@ logger = logging.getLogger(__name__)
 st.title(":blue[How was your surf? Tell us here!]")
 
 surf_spots = tuple(SPOT_IDS_MAP_DF["spot_name"].values)
-format_func = lambda option: f"{option} - {SPOT_IDS_MAP_DF[SPOT_IDS_MAP_DF['spot_name'] == option]['region'].values[0]}"
-surfed_here = st.selectbox("Where did you surf?", 
-                           options=surf_spots,
-                           index=None,
-                           format_func=format_func)
+format_func = (
+    lambda option: f"{option} - {SPOT_IDS_MAP_DF[SPOT_IDS_MAP_DF['spot_name'] == option]['region'].values[0]}"
+)
+surfed_here = st.selectbox(
+    "Where did you surf?", options=surf_spots, index=None, format_func=format_func
+)
 
 if surfed_here:
 
     SPOT_ID = SPOT_IDS_MAP_DF[SPOT_IDS_MAP_DF["spot_name"] == surfed_here][
         "spot_id"
     ].values[0]
-
 
     got_in = st.time_input("When did you get in (roughly)?", value=None)
     got_out = st.time_input("When did you get out (roughly)?")
