@@ -1,4 +1,5 @@
 import streamlit as st
+
 st.set_page_config(
     page_title="How was your surf?",
     page_icon="🌊",
@@ -8,7 +9,6 @@ from good_waves_please.api.gather_surf_data import (
     merge_session_and_rating_data,
     gather_session_data,
     write_data_gcs,
-    # write_data_psql,
 )
 from good_waves_please.api.spot_ids import SPOT_IDS_MAP_DF
 import pandas as pd
@@ -21,18 +21,18 @@ logger = logging.getLogger(__name__)
 st.title(":blue[How was your surf? Tell us here!]")
 
 surf_spots = tuple(SPOT_IDS_MAP_DF["spot_name"].values)
-format_func = lambda option: f"{option} - {SPOT_IDS_MAP_DF[SPOT_IDS_MAP_DF['spot_name'] == option]['region'].values[0]}"
-surfed_here = st.selectbox("Where did you surf?", 
-                           options=surf_spots,
-                           index=None,
-                           format_func=format_func)
+format_func = (
+    lambda option: f"{option} - {SPOT_IDS_MAP_DF[SPOT_IDS_MAP_DF['spot_name'] == option]['region'].values[0]}"
+)
+surfed_here = st.selectbox(
+    "Where did you surf?", options=surf_spots, index=None, format_func=format_func
+)
 
 if surfed_here:
 
     SPOT_ID = SPOT_IDS_MAP_DF[SPOT_IDS_MAP_DF["spot_name"] == surfed_here][
         "spot_id"
     ].values[0]
-
 
     got_in = st.time_input("When did you get in (roughly)?", value=None)
     got_out = st.time_input("When did you get out (roughly)?")
@@ -55,10 +55,6 @@ if surfed_here:
                                 wave quality!!
                                 """,
     )
-
-    # surf_binary = st.number_input(
-    #     "Good surf = 1, Average surf or below = 0", min_value=0, max_value=1, value=None
-    # )
 
     surf_description = st.text_area(
         "How was your surf?",
@@ -120,19 +116,16 @@ if surfed_here:
         placeholder="Choose an option",
         index=None,
     )
-    # date = st.date_input("What day did you surf?")
+
+    date = st.date_input("What day did you surf?")
 
     submit = st.button("Submit Data")
     if submit:
         session_data = gather_session_data(
-            spot_id=SPOT_ID,
-            got_in_time=got_in,
-            got_out_time=got_out,
-            # date=date
+            spot_id=SPOT_ID, got_in_time=got_in, got_out_time=got_out, date=date
         )
         session_data_rated = merge_session_and_rating_data(
             session_data=session_data,
-            # bin_rating=surf_binary,
             scale_rating=surf_rating,
             qual_rating=surf_description,
             wave_count=wave_count,

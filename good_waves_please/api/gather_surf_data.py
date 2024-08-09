@@ -25,12 +25,21 @@ def add_tide_data(
 
     if len(tides) == 0:
         now = datetime.datetime.now()
-        now = now.replace(minute=0, second=0) if now.minute <= 29 else now.replace(minute=0, second=0) + datetime.timedelta(hours=1)
+        now = (
+            now.replace(minute=0, second=0)
+            if now.minute <= 29
+            else now.replace(minute=0, second=0) + datetime.timedelta(hours=1)
+        )
         hourly_datetimes = [now + datetime.timedelta(hours=i) for i in range(24)]
         length = len(hourly_datetimes)
-        data_dict = {"timestamp_dt":hourly_datetimes, "utcOffset":[np.nan]*length, "tide_type":[np.nan]*length, "tide_height":[np.nan]*length}
+        data_dict = {
+            "timestamp_dt": hourly_datetimes,
+            "utcOffset": [np.nan] * length,
+            "tide_type": [np.nan] * length,
+            "tide_height": [np.nan] * length,
+        }
         updated_df = pd.DataFrame(data_dict)
-        
+
     else:
 
         tide_df = pd.DataFrame(
@@ -40,7 +49,7 @@ def add_tide_data(
             ],
             columns=["timestamp_dt", "utcOffset", "tide_type", "tide_height"],
         )
-        # The tide_df has a row for each hour and then an additional row for 
+        # The tide_df has a row for each hour and then an additional row for
         # each high/low tide when they don't happen on the hour, minute and second (which is very rare)
         # This logic just reduces this df so that there is a row for each hour and high/low
         # tides are at the nearest hour. I should probably put it in a separate function.
@@ -51,7 +60,12 @@ def add_tide_data(
             if row.timestamp_dt.hour in updated_hours:
                 continue
             elif row.tide_type in ["HIGH", "LOW"]:
-                row.timestamp_dt = row.timestamp_dt.replace(minute=0, second=0) if row.timestamp_dt.minute <= 29 else row.timestamp_dt.replace(minute=0, second=0) + datetime.timedelta(hours=1)
+                row.timestamp_dt = (
+                    row.timestamp_dt.replace(minute=0, second=0)
+                    if row.timestamp_dt.minute <= 29
+                    else row.timestamp_dt.replace(minute=0, second=0)
+                    + datetime.timedelta(hours=1)
+                )
                 updated_rows.append(row)
                 updated_hours.append(row.timestamp_dt.hour)
             else:
@@ -60,7 +74,9 @@ def add_tide_data(
 
         updated_df = pd.DataFrame(updated_rows).sort_index().reset_index(drop=True)
 
-        print(f"forecast cols: {forecast_df.columns}\nupdate cols: {updated_df.columns}")
+        print(
+            f"forecast cols: {forecast_df.columns}\nupdate cols: {updated_df.columns}"
+        )
     forecast_df = forecast_df.merge(updated_df, on="timestamp_dt")
     return forecast_df
 
@@ -96,26 +112,32 @@ def get_forecast_at_spot(
     forecast_df["spot_id"] = spot_id
     return forecast_df
 
-def gather_session_data(
-    spot_id: str,
-    got_in_time,
-    got_out_time,
-    # date: None
-):
+
+def get_forecast_from_hindcast(spot_id: str, date: datetime.date):
+    forecast_df = pd.read_parquet(GCS_SURF_SESSIONS_BUCKET + "all_forecasts.parquet")
+    forecast_df = forecast_df[
+        (forecast_df.spot_id == spot_id) & (forecast_df.timestamp_dt.dt.date == date)
+    ]
+    return forecast_df
+
+
+def gather_session_data(spot_id: str, got_in_time, got_out_time, date: datetime.date):
     """
     Using the surf spot id and time, you can use the API to get info on the
     surf and return it as a pandas row. If there is a date
     it means the surf was not today, so find the details for the date.
     """
     time_of_surf = middle_time(got_in_time, got_out_time)
-    forecast_df = get_forecast_at_spot(spot_id=spot_id)
+    if date == datetime.datetime.now().date():
+        forecast_df = get_forecast_at_spot(spot_id=spot_id)
+    else:
+        forecast_df = get_forecast_from_hindcast(spot_id=spot_id, date=date)
     forecast_row = forecast_df[forecast_df["timestamp_dt"].dt.hour == time_of_surf.hour]
     return forecast_row
 
 
 def merge_session_and_rating_data(
     session_data,
-    # bin_rating,
     scale_rating,
     qual_rating,
     wave_size,
@@ -125,7 +147,6 @@ def merge_session_and_rating_data(
     shape,
 ):
     copy = session_data.copy()
-    # copy["binary_rating"] = bin_rating
     copy["scale_rating"] = scale_rating
     copy["qual_rating"] = qual_rating
     copy["wave_size_qual"] = wave_size
@@ -169,32 +190,4 @@ def write_data_gcs(row: pd.DataFrame):
     #     header=False,
     #     )
     logger.info("Appended new row to database!")
-    return None
-
-
-def write_data_psql(row: pd.DataFrame):
-    date_id = datetime.datetime.now().strftime(format="%Y%m%d%H%M%S")
-    engine = create_engine(
-        f"postgresql://{st.secrets.connections.postgresql.username}:{st.secrets.connections.postgresql.password}@{st.secrets.connections.postgresql.host}:{st.secrets.connections.postgresql.port}/{st.secrets.connections.postgresql.database}"
-    )
-    # sql_query = "SELECT * FROM your_table;"
-    for_archive = pd.read_sql_table("surf_sessions", con=engine)
-    for_archive.to_csv(ARCHIVED_DATA / f"sql_database_{date_id}.csv")
-    update = row.copy()
-    update.reset_index(drop=True, inplace=True)
-    update.to_sql("surf_sessions", con=engine, if_exists="append", index_label="index")
-    logger.info("Appended new row to database!")
-    return None
-
-
-def write_data_from_empty(row: pd.DataFrame):
-    date_id = datetime.datetime.now().strftime(format="%Y%m%d%H%M%S")
-    shutil.copy(DATA_DIR / "database.csv", ARCHIVED_DATA / f"database_{date_id}.csv")
-    try:
-        database = pd.read_csv(DATA_DIR / "database.csv")
-        update = pd.concat([database, row])
-    except:
-        update = row.copy()
-    update.to_csv(DATA_DIR / "database.csv")
-    logger.info("Appended new row to database, from empty!")
     return None
